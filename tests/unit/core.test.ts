@@ -58,7 +58,7 @@ describe('fuzzy search', () => {
 });
 
 describe('templates', () => {
-  const vars = { ...pageVars('https://example.com/a b?x=1#h', 'Hello & "World"'), selection: 'a&b c' };
+  const vars: Record<string, string> = { ...pageVars('https://example.com/a b?x=1#h', 'Hello & "World"'), selection: 'a&b c' };
   it('extracts used variables and prompts', () => {
     expect([...varsIn('{url} {title} {prompt:Name}')]).toEqual(['url', 'title', 'prompt:Name']);
     expect(promptsIn('x {prompt:Tag} {prompt:}')).toEqual(['Tag', '']);

@@ -57,6 +57,9 @@ export const PAGE: Record<string, Run> = {
   async 'page.screenshot'(ctx) {
     const { opts } = await getSettings();
     const format = opts.shotFormat;
+    // captureVisibleTab grabs whatever tab is visible in the window; never capture a different tab.
+    const [visible] = await chrome.tabs.query({ active: true, windowId: ctx.tab.windowId });
+    if (visible?.id !== ctx.tab.id) throw new Error('Switch to this tab to take a screenshot');
     let dataUrl: string;
     try {
       dataUrl = await chrome.tabs.captureVisibleTab(ctx.tab.windowId, { format, quality: opts.shotQuality });
