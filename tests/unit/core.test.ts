@@ -8,6 +8,7 @@ import { matches, patternToRegex, specificity } from '../../src/lib/pattern';
 import { permsFor } from '../../src/lib/permissions';
 import { compile, effectiveKey, withDefaults } from '../../src/lib/storage';
 import { hostDisabled } from '../../src/lib/sites';
+import { describeStep, parseSteps, pushStep, stringifySteps, type Step } from '../../src/lib/recording';
 import { pageVars, promptsIn, render, varsIn } from '../../src/lib/template';
 
 const ev = (code: string, mods: Partial<Record<'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey', boolean>> = {}) =>
@@ -109,7 +110,7 @@ describe('conflicts', () => {
   it('blocks a combo already used by another Klavio action', () => {
     expect(findConflict('Alt+Shift+KeyD', 'tab.pin', s, [])).toBe(META['tab.duplicate'].title);
     expect(findConflict('Alt+Shift+KeyD', 'tab.duplicate', s, [])).toBeNull();
-    expect(findConflict('Alt+Shift+KeyK', 'tab.pin', s, [])).toBeNull();
+    expect(findConflict('Alt+Shift+KeyJ', 'tab.pin', s, [])).toBeNull();
   });
   it('allows the same key for different scopes, blocks for the same scope', () => {
     const a = custom({ id: 'u_a', title: 'A', scope: ['*://github.com/*'] });
@@ -191,5 +192,38 @@ describe('registry', () => {
   it('has no duplicate default in-page keys', () => {
     const keys = ACTIONS.map((a) => a.key).filter(Boolean);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('recorded steps', () => {
+  const steps: Step[] = [
+    { do: 'click', sel: '#search', tag: 'button', text: 'Search' },
+    { do: 'fill', sel: 'input[name="q"]', value: 'hello {title}' },
+    { do: 'key', sel: 'input[name="q"]', key: 'Enter', nav: true },
+    { do: 'wait', ms: 300 },
+  ];
+  it('round-trips through the line format', () => {
+    expect(parseSteps(stringifySteps(steps))).toEqual(steps);
+    expect(stringifySteps(steps).split('\n')).toHaveLength(4);
+  });
+  it('rejects unknown steps', () => {
+    expect(() => parseSteps('{"do":"rm"}')).toThrow(/Unknown step/);
+  });
+  it('merges repeated fills of one field and drops the change event after Enter', () => {
+    let s: Step[] = [];
+    s = pushStep(s, { do: 'fill', sel: '#q', value: 'h' });
+    s = pushStep(s, { do: 'fill', sel: '#q', value: 'hello' });
+    expect(s).toEqual([{ do: 'fill', sel: '#q', value: 'hello' }]);
+    s = pushStep(s, { do: 'key', sel: '#q', key: 'Enter' });
+    s = pushStep(s, { do: 'fill', sel: '#q', value: 'hello' });
+    expect(s).toHaveLength(2);
+    s = pushStep(s, { do: 'click', sel: '#go' });
+    s = pushStep(s, { do: 'click', sel: '#go' });
+    expect(s).toHaveLength(4); // repeated clicks are real steps
+  });
+  it('describes steps for the settings list', () => {
+    expect(describeStep(steps[0])).toBe('Click “Search”');
+    expect(describeStep(steps[1])).toMatch(/^Type “hello \{title\}” into/);
+    expect(describeStep(steps[3])).toBe('Wait 300 ms');
   });
 });

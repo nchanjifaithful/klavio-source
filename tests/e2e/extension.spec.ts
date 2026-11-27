@@ -16,7 +16,11 @@ test.beforeAll(async () => {
     args: [`--disable-extensions-except=${DIST}`, `--load-extension=${DIST}`],
     permissions: ['clipboard-read', 'clipboard-write'],
   });
-  await ctx.route('http://klavio.test/**', (r) => r.fulfill({
+  await ctx.route('http://klavio.test/form', (r) => r.fulfill({
+    contentType: 'text/html',
+    body: `<!doctype html><title>Form</title><input id="name" placeholder="Your name"><button id="greet" onclick="document.getElementById('out').textContent='Hi '+document.getElementById('name').value">Greet</button><p id="out"></p>`,
+  }));
+  await ctx.route(/http:\/\/klavio\.test\/(?!form)/, (r) => r.fulfill({
     contentType: 'text/html',
     body: `<!doctype html><title>Klavio test</title><h1>Hello</h1><input id="t"><p id="log"></p>
       <script>addEventListener('keydown', e => document.getElementById('log').textContent += e.code + ' ')</script>`,
@@ -129,5 +133,45 @@ test('custom action: copy template with variables', async () => {
   const res = await run('u_e2e', id);
   expect(res.ok).toBe(true);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`Klavio test <${PAGE}> (klavio.test)`);
+  await page.close();
+});
+
+test('recorder: record clicks + typing, save with a shortcut, replay after reload', async () => {
+  const page = await ctx.newPage();
+  await page.goto('http://klavio.test/form');
+  await page.bringToFront();
+  const id = await sw.evaluate(async () => (await chrome.tabs.query({ url: 'http://klavio.test/form' }))[0].id!);
+  expect((await run('record.start', id)).ok).toBe(true);
+  await expect(page.locator('klavio-rec')).toHaveCount(1);
+
+  await page.locator('#name').fill('');
+  await page.locator('#name').pressSequentially('Ada');
+  await page.locator('#greet').click();
+  await expect(page.locator('#out')).toHaveText('Hi Ada');
+  await expect(page.locator('klavio-rec').getByText('2 steps')).toBeVisible();
+
+  await page.locator('klavio-rec').getByRole('button', { name: 'Stop & save' }).click();
+  // Name prompt (overlay): replace the suggested name, then press a shortcut.
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('Greet Ada');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Alt+Shift+Digit1');
+
+  await expect.poll(async () => sw.evaluate(async () => {
+    const { custom } = await chrome.storage.local.get('custom');
+    const { keymap } = await chrome.storage.sync.get('keymap');
+    const a = (custom as any[]).find((x) => x.title === 'Greet Ada');
+    return a ? { type: a.type, key: keymap?.[a.id], steps: a.cfg.steps.split('\n').length } : null;
+  })).toEqual({ type: 'recording', key: 'Alt+Shift+Digit1', steps: 2 });
+
+  await page.reload();
+  await page.waitForFunction(() => document.readyState === 'complete');
+  await expect(page.locator('#out')).toHaveText('');
+  await page.locator('body').click({ position: { x: 5, y: 200 } });
+  await page.keyboard.press('Alt+Shift+Digit1');
+  await expect(page.locator('#out')).toHaveText('Hi Ada');
+  await expect(page.locator('#name')).toHaveValue('Ada');
   await page.close();
 });

@@ -37,3 +37,10 @@ Automated tests: `npm test` (unit) and `npm run test:e2e` (Playwright). The item
 
 ## Network
 - [ ] DevTools (service worker and pages): no requests other than user webhooks and pages you open.
+
+## Recorder
+- [ ] Alt+Shift+K shows the Recording bar. Type in a search box, then click Search. The count goes up and the bar survives the page load.
+- [ ] Stop & save asks for a name, then a shortcut. A toast confirms the key.
+- [ ] Pressing that shortcut on another site opens the recorded page and replays the steps.
+- [ ] Undo removes the last step, and Cancel discards the recording.
+- [ ] Typing in a password field records `{prompt:Password}`, not the password.

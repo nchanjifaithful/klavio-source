@@ -22,7 +22,11 @@ function init() {
   const g = globalThis as { __klv_keys?: unknown };
   if (g.__klv_keys === chrome.runtime) return;
   g.__klv_keys = chrome.runtime;
-  chrome.storage.local.get('compiled').then((r) => apply(r.compiled as Compiled)).catch(() => {});
+  chrome.storage.local.get(['compiled', 'rec']).then((r) => {
+    apply(r.compiled as Compiled);
+    // A recording is in progress (in some tab): the worker resumes it if it's this tab.
+    if (r.rec) chrome.runtime.sendMessage({ type: 'recResume' }).catch(() => {});
+  }).catch(() => {});
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area === 'local' && ch.compiled) apply(ch.compiled.newValue as Compiled);
   });

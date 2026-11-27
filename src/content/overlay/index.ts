@@ -4,6 +4,7 @@
 
 import { dataUrlToBlob, writeImage, writeText } from '../../lib/clipboard';
 import type { PItem } from '../../lib/items';
+import { comboFromEvent, hasModifier, label } from '../../lib/keymap';
 import { createPalette, PALETTE_CSS, THEME_CSS } from '../../ui/palette';
 
 declare global {
@@ -222,6 +223,29 @@ function confirmBox({ msg, ok = 'OK' }: { msg: string; ok?: string }): Promise<b
 }
 
 (globalThis as { __klv_owner?: unknown }).__klv_owner = chrome.runtime;
+/** Ask for a shortcut combo (at least one modifier). Resolves null when skipped. */
+function keycap({ title }: { title: string }): Promise<string | null> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v: string | null) => { if (!done) { done = true; resolve(v); layer.close(); } };
+    const card = h('div', 'card pad');
+    const shown = h('p', 'sub', 'Press keys now, e.g. Alt + Shift + 1. Esc skips.');
+    const row = h('div', 'row');
+    const skip = button('Skip', () => finish(null));
+    row.append(skip);
+    card.append(h('h2', '', `Shortcut for “${title}”`), shown, row);
+    const layer = modal(card, (e) => {
+      const c = comboFromEvent(e);
+      if (!c) return;
+      e.preventDefault();
+      if (!hasModifier(c)) { shown.textContent = `${label(c)} needs Ctrl, Alt or Shift. Esc skips.`; return; }
+      shown.textContent = label(c);
+      setTimeout(() => finish(c), 350);
+    }, () => finish(null));
+    skip.focus();
+  });
+}
+
 globalThis.__klv_overlay = (cmd: string, d: any) => {
   switch (cmd) {
     case 'toast': return toast(d.msg, d.kind);
@@ -230,6 +254,7 @@ globalThis.__klv_overlay = (cmd: string, d: any) => {
     case 'shot': return shot(d);
     case 'prompt': return prompt(d);
     case 'confirm': return confirmBox(d);
+    case 'keycap': return keycap(d);
     case 'copy': return writeText(document, d.text, d.html).then((ok) => (ok && d.toast ? toast(d.toast) : ok));
     case 'close': closeAll(); return true;
   }

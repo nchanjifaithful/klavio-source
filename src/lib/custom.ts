@@ -2,7 +2,7 @@
 
 export type CustomType =
   | 'url' | 'protocol' | 'extPage' | 'extToggle' | 'extMessage' | 'search' | 'copy'
-  | 'css' | 'element' | 'js' | 'tabset' | 'gotoTab' | 'webhook' | 'macro';
+  | 'css' | 'element' | 'js' | 'tabset' | 'gotoTab' | 'webhook' | 'macro' | 'recording';
 
 export interface CustomAction {
   id: string; // "u_xxxxxxxx"
@@ -34,6 +34,7 @@ export const TYPES: Record<CustomType, TypeDef> = {
   tabset: { label: 'Open tab set', desc: 'Open a saved group of URLs, optionally as a named tab group.', fields: [{ k: 'urls', label: 'URLs (one per line)', kind: 'textarea', ph: 'https://mail.google.com\nhttps://calendar.google.com' }, { k: 'group', label: 'Tab group name (optional)', kind: 'text' }] },
   gotoTab: { label: 'Go to tab', desc: 'Switch to the first tab matching a URL pattern, or open it.', fields: [{ k: 'pattern', label: 'URL pattern', kind: 'text', ph: '*://mail.google.com/*' }, { k: 'url', label: 'Open if none (optional)', kind: 'text', ph: 'https://mail.google.com', tpl: true }] },
   webhook: { label: 'Webhook', desc: 'POST page data to a URL you set.', danger: 'Sends page data to an external server.', fields: [{ k: 'url', label: 'Webhook URL', kind: 'text', ph: 'https://hooks.zapier.com/…' }, { k: 'method', label: 'Method', kind: 'select', options: [['POST', 'POST'], ['PUT', 'PUT']] }, { k: 'body', label: 'JSON body template', kind: 'code', ph: '{"url":"{url}","title":"{title}","selection":"{selection}"}', tpl: true }] },
+  recording: { label: 'Recorded steps', desc: 'Clicks and typing recorded with “Record a new action on this page”. One step per line; edit text values freely (template variables work).', fields: [{ k: 'steps', label: 'Steps', kind: 'code', ph: '{"do":"click","sel":"#search","tag":"button","text":"Search"}', tpl: true }, { k: 'start', label: 'Start page', kind: 'select', options: [['auto', 'Open the recorded page if I’m on another site'], ['always', 'Always open the recorded page first'], ['never', 'Run on the current page']] }, { k: 'startUrl', label: 'Recorded page', kind: 'text' }] },
   macro: { label: 'Macro', desc: 'Run steps in order: one action id per line, or "wait 500" (ms).', fields: [{ k: 'steps', label: 'Steps', kind: 'macro', ph: 'tab.duplicate\ntab.toNewWindow\nwait 300\npage.zoomIn' }] },
 };
 

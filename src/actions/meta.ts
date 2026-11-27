@@ -20,6 +20,7 @@ export interface ActionMeta {
 
 export const ACTIONS: ActionMeta[] = [
   { id: 'palette.open', title: 'Open command palette', category: 'General', keywords: 'commands search find run', manifestKey: 'Alt+Shift+P', key: 'Alt+Shift+KeyP' },
+  { id: 'record.start', title: 'Record a new action on this page', category: 'General', keywords: 'record macro automate replay clicks steps', key: 'Alt+Shift+KeyK' },
   { id: 'page.qr', title: 'Create QR code for this page', category: 'Page', keywords: 'qr code share phone scan', manifestKey: 'Alt+Shift+Q', key: 'Alt+Shift+KeyQ' },
   { id: 'page.copyUrl', title: 'Copy page URL', category: 'Page', keywords: 'link address clipboard', manifestKey: 'Alt+Shift+C', key: 'Alt+Shift+KeyC' },
   { id: 'page.screenshot', title: 'Screenshot visible area', category: 'Page', keywords: 'capture image snap picture', manifestKey: 'Alt+Shift+S', key: 'Alt+Shift+KeyS' },

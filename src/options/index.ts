@@ -6,6 +6,7 @@ import { blank, DANGEROUS, describeDanger, parsePack, TYPES, type CustomAction, 
 import { comboFromEvent, hasModifier, label } from '../lib/keymap';
 import { PERM_LABELS, permsFor, requestPerms } from '../lib/permissions';
 import { pageVars, render, varsIn } from '../lib/template';
+import { describeStep, parseSteps } from '../lib/recording';
 import { DEFAULT_OPTS, effectiveKey, getCustom, getSettings, saveCustom, type Settings, SYNC_KEYS } from '../lib/storage';
 
 let S: Settings;
@@ -355,6 +356,7 @@ function customTab() {
       h('label', { class: 'fld' }, h('span', {}, 'Name'), title),
       ...def.fields.map(field),
       userScriptsInfo,
+      a.type === 'recording' ? stepList(a.cfg.steps) : '',
       preview,
       h('label', { class: 'fld' }, h('span', {}, 'Scope'), scope),
       h('div', { class: 'fld' }, h('span', {}, 'In-page key'), keyCell(a.id, () => a.scope, paintList)),
@@ -422,7 +424,7 @@ function customTab() {
   void paintEditor();
   wrap.append(
     h('div', { class: 'side' },
-      h('div', { class: 'bar' }, newSel),
+      h('div', { class: 'bar' }, newSel, h('button', { class: 'pri', title: 'Record clicks and typing on your most recent tab', onclick: startRecord }, '● Record on a page')),
       listEl,
       h('div', { class: 'bar' }, h('button', { onclick: () => exportPack(C) }, 'Export all'), h('button', { onclick: () => fileIn.click() }, 'Import'), fileIn),
       h('p', { class: 'mut small' }, 'Variables: {url} {urlEncoded} {title} {domain} {origin} {path} {selection} {clipboard} {date} {time} {prompt:Label}'),
@@ -430,6 +432,23 @@ function customTab() {
     editor,
   );
   return wrap;
+}
+
+function stepList(src: string) {
+  try {
+    const steps = parseSteps(src);
+    return h('ol', { class: 'steps' }, ...steps.map((s) => h('li', {}, describeStep(s), s.nav ? h('span', { class: 'mut' }, ' → waits for page load') : '')));
+  } catch (e) {
+    return h('p', { class: 'kmsg err' }, `Steps can't be read: ${(e as Error).message}`);
+  }
+}
+
+async function startRecord() {
+  const t = await recentTab();
+  if (!t?.url || !/^(https?|file):/.test(t.url)) return flash('Open the web page you want to record in another tab first', 'err');
+  await chrome.tabs.update(t.id!, { active: true });
+  await chrome.windows.update(t.windowId, { focused: true });
+  await chrome.runtime.sendMessage({ type: 'run', id: 'record.start', tabId: t.id, via: 'popup' });
 }
 
 function saveJson(obj: unknown, name: string) {

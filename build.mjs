@@ -22,6 +22,7 @@ const entries = [
   { in: 'src/content/keys.ts', out: 'keys', format: 'iife' },
   { in: 'src/content/overlay/index.ts', out: 'overlay', format: 'iife' },
   { in: 'src/content/overlay/qr.ts', out: 'qr', format: 'iife' },
+  { in: 'src/content/recorder.ts', out: 'recorder', format: 'iife' },
   { in: 'src/offscreen/clipboard.ts', out: 'offscreen', format: 'iife' },
   { in: 'src/popup/index.ts', out: 'popup', format: 'esm' },
   { in: 'src/options/index.ts', out: 'options', format: 'esm' },

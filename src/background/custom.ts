@@ -1,8 +1,10 @@
 // Runner for user-built custom actions.
 
 import { macroSteps, type CustomAction } from '../lib/custom';
+import { parseSteps } from '../lib/recording';
 import { matches } from '../lib/pattern';
 import { pageVars, promptsIn, render, varsIn, type Mode } from '../lib/template';
+import { replay } from './record';
 import { copyText, type Ctx, NOT_AVAILABLE, promptText, readClipboard, scriptable, toast } from './ui';
 
 type RunById = (id: string, ctx: Ctx) => Promise<unknown>;
@@ -196,6 +198,16 @@ export async function runCustom(a: CustomAction, ctx: Ctx, runById: RunById): Pr
       const res = await fetch(c.url, { method: c.method || 'POST', headers: { 'Content-Type': 'application/json' }, body });
       if (!res.ok) throw new Error(`Webhook failed: HTTP ${res.status}`);
       await toast(ctx, `Sent (${res.status})`);
+      return;
+    }
+    case 'recording': {
+      const steps = parseSteps(c.steps);
+      const idx = steps.flatMap((s, i) => (s.value?.includes('{') ? [i] : []));
+      if (idx.length) {
+        const vals = await fill(ctx, idx.map((i) => [steps[i].value, 'text'] as [string, Mode]));
+        idx.forEach((i, k) => (steps[i] = { ...steps[i], value: vals[k] }));
+      }
+      await replay(ctx, steps, c.start || 'auto', c.startUrl || '');
       return;
     }
     case 'macro': {

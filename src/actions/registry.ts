@@ -8,8 +8,10 @@ import { ACTIONS, type ActionMeta } from './meta';
 import { OPEN } from './open';
 import { PAGE, type Run, showPopup } from './page';
 import { TAB } from './tab';
+import { startRecording } from '../background/record';
 
 const GENERAL: Record<string, Run> = {
+  'record.start': (ctx: Ctx) => startRecording(ctx),
   async 'palette.open'(ctx: Ctx) {
     if (scriptable(ctx.tab)) {
       try {

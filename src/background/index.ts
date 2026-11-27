@@ -8,6 +8,7 @@ import { buildItems } from '../lib/items';
 import { hasPerms, permsFor, requestPerms } from '../lib/permissions';
 import { compile, getCustom, getSettings, pushMru } from '../lib/storage';
 import { runCustom } from './custom';
+import { onRecMessage } from './record';
 import { Cancelled, type Ctx, friendly, openPopupWindow, settleDialog, toast } from './ui';
 
 async function activeTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -81,6 +82,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       return;
     }
     case 'dlg': settleDialog(msg.id, msg.value); return;
+    case 'recResume': case 'recSave': case 'recCancel': case 'recStop':
+      if (sender.tab) void onRecMessage(msg, sender.tab);
+      return;
     case 'items': buildItems(msg.url).then(reply); return true;
     case 'compile': recompile().then(() => reply(true)); return true;
   }
@@ -102,7 +106,7 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (area === 'sync' || (area === 'local' && ch.custom)) void recompile();
 });
 
-chrome.runtime.onStartup.addListener(() => void recompile());
+chrome.runtime.onStartup.addListener(() => { void recompile(); void chrome.storage.local.remove('rec'); });
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   await recompile();

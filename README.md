@@ -42,6 +42,23 @@ You can remap any of these in **Settings → Shortcuts**.
 
 Settings → **Custom** builds actions of 14 types: open URL, protocol/app link, extension page, toggle extension, message an extension, search selection, copy template, inject CSS, click/fill element, run JavaScript (needs "Allow User Scripts"), tab set, go to tab, webhook and macro. Template variables: `{url} {urlEncoded} {title} {domain} {origin} {path} {selection} {clipboard} {date} {time} {prompt:Label}`. Each action can be limited to URL patterns, and the most specific pattern wins. Packs can be exported and imported as plain JSON, and imports that contain JS, webhooks or extension toggles ask you to confirm first.
 
+## Recording an action
+
+Press **Alt+Shift+K**, or click **● Record on a page** in Settings → Custom, and use the page as you normally would. Klavio records:
+
+- clicks
+- text you type (password fields become a `{prompt:Password}` step, so the password is never stored)
+- dropdown choices
+- Enter and Escape
+
+A recording keeps going when a step loads a new page. Press **Stop & save**, name the action, then press a shortcut (for example Alt+Shift+1).
+
+On replay, Klavio first opens the recorded page if you're on another site. It then waits up to 6 s for each element to appear, waits for page loads after steps that navigated, and submits forms on Enter. Elements are found by a stable selector (id, `data-testid`, `name`, `aria-label`, `href`), with the element's visible text as a fallback.
+
+Steps are stored one JSON object per line, so you can edit them in Settings, for example replacing typed text with `{selection}` or `{prompt:Query}`.
+
+Limits: recording covers the page's main frame only, not iframes or Chrome's own UI.
+
 ## Development
 
 ```sh
