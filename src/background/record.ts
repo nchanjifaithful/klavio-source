@@ -1,6 +1,6 @@
 // Recording lifecycle (start / resume after navigation / save) and replay of recorded steps.
 
-import { findConflict } from '../lib/conflicts';
+import { findConflict, keyWarnings } from '../lib/conflicts';
 import { blank } from '../lib/custom';
 import { label } from '../lib/keymap';
 import { stringifySteps, type Step } from '../lib/recording';
@@ -64,7 +64,8 @@ async function finish(ctx: Ctx, steps: Step[], startUrl: string) {
     const clash = findConflict(combo, action.id, s, [...custom, action]);
     if (clash) return toast(ctx, `Saved “${title}”, but ${label(combo)} is used by “${clash}”. Pick a key in Settings → Custom.`, 'err');
     await chrome.storage.sync.set({ keymap: { ...s.keymap, [action.id]: combo } });
-    return toast(ctx, `Saved “${title}” on ${label(combo)}`);
+    const warn = keyWarnings(combo);
+    return toast(ctx, `Saved “${title}” on ${label(combo)}` + (warn.length ? `. Heads up: ${warn[0]}` : ''), warn.length ? 'err' : 'ok');
   }
   await toast(ctx, `Saved “${title}”. Give it a key in Settings → Custom.`);
 }

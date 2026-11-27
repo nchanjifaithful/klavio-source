@@ -23,6 +23,44 @@ export const CHROME_KEYS: Record<string, string> = {
 export const chromeWarning = (combo: string) =>
   CHROME_KEYS[combo] ? `Chrome uses this for “${CHROME_KEYS[combo]}”; Chrome may handle it first.` : null;
 
+/** Windows system shortcuts that are taken before Chrome (or a page) ever sees the key. */
+export const WINDOWS_KEYS: Record<string, string> = {
+  'Alt+Tab': 'Switch windows', 'Alt+Shift+Tab': 'Switch windows', 'Ctrl+Alt+Tab': 'Switch windows', 'Alt+F4': 'Close window',
+  'Alt+Escape': 'Cycle windows', 'Alt+Space': 'Window menu', 'Ctrl+Escape': 'Start menu', 'Ctrl+Shift+Escape': 'Task Manager',
+  'Ctrl+Alt+Delete': 'Security screen', 'Ctrl+Alt+NumpadDecimal': 'Security screen', PrintScreen: 'Screenshot', 'Alt+PrintScreen': 'Screenshot window',
+  'Ctrl+PrintScreen': 'Screenshot', 'Shift+PrintScreen': 'Screenshot', 'Alt+Shift+PrintScreen': 'High contrast', 'Alt+Shift+NumLock': 'Mouse keys',
+  'Ctrl+Space': 'Input method (IME) on/off', 'Shift+Space': 'Input method switch (some layouts)', 'Ctrl+Shift+Space': 'Input method (some layouts)',
+  'Ctrl+Alt+ArrowUp': 'Rotate screen (some graphics drivers)', 'Ctrl+Alt+ArrowDown': 'Rotate screen (some graphics drivers)',
+  'Ctrl+Alt+ArrowLeft': 'Rotate screen (some graphics drivers)', 'Ctrl+Alt+ArrowRight': 'Rotate screen (some graphics drivers)',
+  'Ctrl+Shift+Digit0': 'Keyboard layout switch (if enabled)', 'Alt+Shift+Digit0': 'Input language hotkey (if enabled)',
+};
+
+export const isWindows = () =>
+  /win/i.test((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform ?? '');
+
+export function osWarning(combo: string, windows = isWindows()): string | null {
+  if (!windows) return null;
+  if (/(^|\+)Meta\+/.test(combo)) return 'Windows reserves most Windows-key (⊞) shortcuts; this will likely never reach Chrome.';
+  if (WINDOWS_KEYS[combo]) return `Windows uses this for “${WINDOWS_KEYS[combo]}”, so Chrome won't receive it.`;
+  if (/(^|\+)Ctrl\+Alt\+/.test(combo)) return 'Ctrl + Alt acts as AltGr on many keyboard layouts (used to type characters like @ € \\); it may type a character instead.';
+  return null;
+}
+
+const CHROME_BINDABLE = /^(Key[A-Z]|Digit\d|Comma|Period|Home|End|PageUp|PageDown|Space|Insert|Delete|Arrow(Up|Down|Left|Right)|Media\w+)$/;
+
+/** Can this combo be bound at chrome://extensions/shortcuts? (Needs Ctrl or Alt, not both, and a supported key.) */
+export function chromeBindable(combo: string): boolean {
+  if (combo.includes(' ')) return false;
+  const parts = combo.split('+');
+  const key = parts.pop()!;
+  const ctrl = parts.includes('Ctrl'), alt = parts.includes('Alt');
+  return (ctrl || alt) && !(ctrl && alt) && !parts.includes('Meta') && CHROME_BINDABLE.test(key);
+}
+
+/** All non-blocking warnings for a combo, most important first. */
+export const keyWarnings = (combo: string, windows = isWindows()) =>
+  [osWarning(combo.split(' ')[0], windows), chromeWarning(combo.split(' ')[0])].filter((x): x is string => !!x);
+
 const scopeKey = (scope?: string[]) => (scope?.length ? [...scope].sort().join('\n') : '');
 
 /** Returns the title of a Klavio action that already uses `combo` in the same scope, or null. */

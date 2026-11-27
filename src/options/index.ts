@@ -1,7 +1,7 @@
 // Settings page: Shortcuts, Sites, Actions, Custom, Backup.
 
 import { ACTIONS, type Category, META, SLOT_IDS } from '../actions/meta';
-import { chromeWarning, findConflict } from '../lib/conflicts';
+import { chromeBindable, findConflict, keyWarnings } from '../lib/conflicts';
 import { blank, DANGEROUS, describeDanger, parsePack, TYPES, type CustomAction, type CustomType, type Field } from '../lib/custom';
 import { comboFromEvent, hasModifier, label } from '../lib/keymap';
 import { PERM_LABELS, permsFor, requestPerms } from '../lib/permissions';
@@ -98,12 +98,13 @@ async function setKey(id: string, combo: string | null, scope?: string[]): Promi
   if (META[id] && combo === (META[id].key ?? null)) delete keymap[id];
   else keymap[id] = combo;
   await saveSync({ keymap });
-  return { ok: true, msg: (combo && chromeWarning(combo.split(' ')[0])) || '' };
+  return { ok: true, msg: combo ? keyWarnings(combo).join(' ') : '' };
 }
 
 function keyCell(id: string, getScope?: () => string[] | undefined, onChange?: () => void) {
   const current = META[id] ? effectiveKey(id, S) : S.keymap[id] ?? null;
-  const msg = h('div', { class: 'kmsg' });
+  // Existing keys are checked too, so a combo Windows swallows is flagged without re-recording it.
+  const msg = h('div', { class: 'kmsg warn' }, current ? keyWarnings(current).join(' ') : '');
   const b = h('button', { class: 'key', title: 'Click to record a new combo' }, current ? label(current) : '—');
   b.addEventListener('click', async () => {
     const c = await recordKey(b);
@@ -337,7 +338,35 @@ function customTab() {
       if (slotSel.value) slots[slotSel.value] = a.id;
       await saveSync({ slots });
       flash(slotSel.value ? 'Slot assigned. Bind its key at chrome://extensions/shortcuts.' : 'Slot cleared');
+      paintEditor();
     });
+
+    // In-page keys can't run on the New Tab page or chrome:// pages (no content scripts there).
+    // A global slot + a key bound in Chrome works everywhere; make that one click.
+    const mySlot = Object.entries(S.slots).find(([, v]) => v === a.id)?.[0];
+    const inPage = S.keymap[a.id] ?? null;
+    const everywhere = h('div', { class: 'note ' + (mySlot && chromeKeys[mySlot] ? 'okc' : 'warnc') });
+    if (mySlot && chromeKeys[mySlot]) {
+      everywhere.append(`Works everywhere: ${chromeKeys[mySlot].replace(/\+/g, ' + ')} (Chrome-level, ${mySlot.replace('custom.slot', 'slot ')}).`);
+    } else {
+      const suggest = inPage && chromeBindable(inPage)
+        ? `Use ${label(inPage)} there.`
+        : 'Chrome only accepts Ctrl or Alt (not both) + a letter, number, arrow, Home/End, PgUp/PgDn, Space, Ins/Del, comma or period' + (inPage ? `, so ${label(inPage)} can’t be used there; pick e.g. Alt + Shift + 1.` : '.');
+      everywhere.append(
+        h('b', {}, 'In-page keys don’t work on the New Tab page or chrome:// pages. '),
+        mySlot ? `Now bind ${mySlot.replace('custom.slot', 'Custom action slot ')} at chrome://extensions/shortcuts. ${suggest} ` : `To use a key there too, give it a global slot. ${suggest} `,
+        h('button', { class: 'lnk', onclick: async () => {
+          let sid = mySlot;
+          if (!sid) {
+            sid = SLOT_IDS.find((x) => !S.slots[x] || !C.some((c) => c.id === S.slots[x]));
+            if (!sid) return flash('All 10 slots are in use; free one first', 'err');
+            await saveSync({ slots: { ...S.slots, [sid]: a.id } });
+          }
+          await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+          paintEditor();
+        } }, mySlot ? 'Open Chrome shortcuts' : 'Make it work everywhere'),
+      );
+    }
 
     const perms = permsFor(a.id, C, 0, a);
     const userScriptsInfo = h('div', {});
@@ -359,8 +388,9 @@ function customTab() {
       a.type === 'recording' ? stepList(a.cfg.steps) : '',
       preview,
       h('label', { class: 'fld' }, h('span', {}, 'Scope'), scope),
-      h('div', { class: 'fld' }, h('span', {}, 'In-page key'), keyCell(a.id, () => a.scope, paintList)),
+      h('div', { class: 'fld' }, h('span', {}, 'In-page key'), keyCell(a.id, () => a.scope, () => { paintList(); paintEditor(); })),
       h('label', { class: 'fld' }, h('span', {}, 'Global key slot'), slotSel),
+      everywhere,
       perms.length ? h('p', { class: 'mut' }, `Needs: ${perms.map((p) => PERM_LABELS[p] ?? p).join(', ')} (asked on first use).`) : '',
       h('div', { class: 'row' },
         h('button', { class: 'pri', onclick: async () => {

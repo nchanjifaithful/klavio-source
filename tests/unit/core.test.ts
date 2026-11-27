@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIONS, META } from '../../src/actions/meta';
-import { chromeWarning, findConflict } from '../../src/lib/conflicts';
+import { chromeBindable, chromeWarning, findConflict, keyWarnings, osWarning } from '../../src/lib/conflicts';
 import { blank, describeDanger, macroSteps, parsePack, type CustomAction } from '../../src/lib/custom';
 import { score, search } from '../../src/lib/fuzzy';
 import { comboFromEvent, fromChromeShortcut, hasStrongModifier, label } from '../../src/lib/keymap';
@@ -118,6 +118,23 @@ describe('conflicts', () => {
     expect(findConflict('Alt+KeyJ', 'u_b', s2, [a], ['*://gitlab.com/*'])).toBeNull();
     expect(findConflict('Alt+KeyJ', 'u_b', s2, [a], ['*://github.com/*'])).toBe('A');
     expect(findConflict('Alt+Shift+KeyQ', 'u_b', s2, [a], ['*://github.com/*'])).toBeNull(); // scoped beats global
+  });
+  it('warns on Windows system shortcuts (only on Windows)', () => {
+    expect(osWarning('Alt+Tab', true)).toMatch(/Switch windows/);
+    expect(osWarning('Ctrl+Shift+Escape', true)).toMatch(/Task Manager/);
+    expect(osWarning('Meta+KeyE', true)).toMatch(/Windows-key/);
+    expect(osWarning('Ctrl+Alt+KeyQ', true)).toMatch(/AltGr/);
+    expect(osWarning('Alt+Shift+KeyQ', true)).toBeNull();
+    expect(osWarning('Alt+Tab', false)).toBeNull();
+    expect(keyWarnings('Ctrl+KeyT', true)).toHaveLength(1);
+  });
+  it('knows which combos Chrome can bind at chrome://extensions/shortcuts', () => {
+    expect(chromeBindable('Alt+Shift+Digit1')).toBe(true);
+    expect(chromeBindable('Ctrl+Shift+KeyK')).toBe(true);
+    expect(chromeBindable('Ctrl+Shift+Semicolon')).toBe(false);
+    expect(chromeBindable('Ctrl+Numpad4')).toBe(false);
+    expect(chromeBindable('Ctrl+Alt+KeyK')).toBe(false);
+    expect(chromeBindable('Shift+KeyK')).toBe(false);
   });
   it('warns on Chrome combos', () => {
     expect(chromeWarning('Ctrl+KeyT')).toMatch(/New tab/);
